@@ -7,9 +7,11 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <AudioToolbox/AudioToolbox.h>
 
-@interface ViewController : UIViewController
+@interface ViewController : UIViewController<NSURLConnectionDataDelegate>
 
+@property(nonatomic,retain)NSURLConnection* connection;
 
 @end
 

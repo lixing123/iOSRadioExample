@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8E7C51741B143F4400783DCD /* Packet.m in Sources */ = {isa = PBXBuildFile; fileRef = 8E7C51731B143F4400783DCD /* Packet.m */; };
 		8EC68B4F1AD926EF0013725D /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 8EC68B4E1AD926EF0013725D /* main.m */; };
 		8EC68B521AD926EF0013725D /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 8EC68B511AD926EF0013725D /* AppDelegate.m */; };
 		8EC68B551AD926EF0013725D /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 8EC68B541AD926EF0013725D /* ViewController.m */; };
@@ -28,6 +29,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		8E7C51721B143F4400783DCD /* Packet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Packet.h; sourceTree = "<group>"; };
+		8E7C51731B143F4400783DCD /* Packet.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Packet.m; sourceTree = "<group>"; };
 		8EC68B491AD926EF0013725D /* RadioExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RadioExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8EC68B4D1AD926EF0013725D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8EC68B4E1AD926EF0013725D /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
@@ -89,6 +92,8 @@
 				8EC68B511AD926EF0013725D /* AppDelegate.m */,
 				8EC68B531AD926EF0013725D /* ViewController.h */,
 				8EC68B541AD926EF0013725D /* ViewController.m */,
+				8E7C51721B143F4400783DCD /* Packet.h */,
+				8E7C51731B143F4400783DCD /* Packet.m */,
 				8EC68B561AD926EF0013725D /* Main.storyboard */,
 				8EC68B591AD926EF0013725D /* Images.xcassets */,
 				8EC68B5B1AD926EF0013725D /* LaunchScreen.xib */,
@@ -226,6 +231,7 @@
 				8EC68B551AD926EF0013725D /* ViewController.m in Sources */,
 				8EC68B521AD926EF0013725D /* AppDelegate.m in Sources */,
 				8EC68B4F1AD926EF0013725D /* main.m in Sources */,
+				8E7C51741B143F4400783DCD /* Packet.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -420,6 +426,7 @@
 				8EC68B6E1AD926EF0013725D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		8EC68B6F1AD926EF0013725D /* Build configuration list for PBXNativeTarget "RadioExampleTests" */ = {
 			isa = XCConfigurationList;
@@ -428,6 +435,7 @@
 				8EC68B711AD926EF0013725D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
