@@ -27,9 +27,12 @@ MyStreamStruct myStream;
 NSMutableArray* packetQueue;
 int audioTotalBuffers;
 BOOL audioStarted;
+BOOL audioQueuePaused;
 
 AudioQueueBufferRef audioFreeBuffers[BUFFER_COUNT];
 BOOL isBuffering;
+
+UILabel* label;
 
 static void CheckError(OSStatus error, const char *operation)
 {
@@ -51,6 +54,7 @@ static void CheckError(OSStatus error, const char *operation)
 #pragma mark - AudioQueueCallback
 
 static void handleAudioQueueCallback(AudioQueueRef inAQ, AudioQueueBufferRef buffer){
+    //NSLog(@"%s",__func__);
     AudioStreamPacketDescription inPacketDescriptions[512];
     UInt32 inNumberPacketeDescriptions = 0;
     
@@ -108,7 +112,7 @@ void MyPropertyListenerCallback( void *inClientData,
                                 AudioFileStreamID inAudioFileStream,
                                 AudioFileStreamPropertyID inPropertyID,
                                 UInt32 *ioFlags ){
-    NSLog(@"%s",__func__);
+    //NSLog(@"%s",__func__);
     MyStreamStruct* myStruct = (MyStreamStruct*)inClientData;
     UInt32 size;
     Boolean writable;
@@ -166,6 +170,24 @@ void MyPropertyListenerCallback( void *inClientData,
     }
 }
 
+static void startAudioQueue(){
+    if (audioQueuePaused) {
+        NSLog(@"Start Audio Queue");
+        AudioQueueStart(myStream.queue,
+                        NULL);
+        audioQueuePaused = NO;
+    }
+    
+}
+
+static void pauseAudioQueue(){
+    if(!audioQueuePaused){
+        NSLog(@"Pause Audio Queue");
+        AudioQueuePause(myStream.queue);
+        audioQueuePaused = YES;
+    }
+}
+
 void MyPacketCallback( void *inClientData,
                       UInt32 inNumberBytes,
                       UInt32 inNumberPackets,
@@ -184,12 +206,18 @@ void MyPacketCallback( void *inClientData,
             [packetQueue addObject:packet];
         }
         audioTotalBuffers += aspd.mDataByteSize;
+        
+        if (!audioStarted) {
+            label.text = @"Buffering";
+        }
     }
+    NSLog(@"packet count:%d",(int)packetQueue.count);
     
     //If audio queue not started and total buffers is "large enough",
     //fill the AudioQueueBuffers and start the audio queue
     //We don't start the queue until the total buffer count is large enough in order to avoid most of the suffering of audio data leverage.
     if (!audioStarted && audioTotalBuffers>BUFFER_COUNT*BUFFER_SIZE*3) {
+    //if (!audioStarted && audioTotalBuffers>BUFFER_COUNT*BUFFER_SIZE) {
         for (int i=0; i<BUFFER_COUNT; i++) {
             AudioQueueBufferRef buffer = myStruct->buffers[i];
             handleAudioQueueCallback(myStruct->queue,
@@ -200,54 +228,31 @@ void MyPacketCallback( void *inClientData,
         CheckError(AudioQueueStart(myStruct->queue,
                                    NULL),
                    "AudioQueueStart failed");
+        label.text = @"Playing";
         audioStarted = YES;
     }
     
     //TODO:
     //When packetQueue count is small, pause the queue and wait for enough data.
     //NSLog(@"packet count:%d",(int)packetQueue.count);
-    if (audioStarted) {
-        UInt32 isRunning;
-        UInt32 size = sizeof(isRunning);
-        CheckError(AudioQueueGetProperty(myStream.queue,
-                                         kAudioQueueProperty_IsRunning,
-                                         &isRunning,
-                                         &size),
-                   "AudioQueueGetProperty kAudioQueueProperty_IsRunning");
-        NSLog(@"isRunning:%d",isRunning);
+    /*if (audioStarted) {
         if (packetQueue.count<500) {
-            if (isRunning) {
-                
-            }
+            pauseAudioQueue();
         }else{
-            if (!isRunning) {
-                
-            }
+            startAudioQueue();
         }
-    }
+    }*/
     
     //Check for free buffers
     @synchronized(packetQueue){
         for (int i=0; i<BUFFER_COUNT; i++) {
-            if (audioFreeBuffers[i]) {
-                //NSLog(@"fill in free buffers");
+            if (audioFreeBuffers[i] && !audioQueuePaused) {
                 handleAudioQueueCallback(myStruct->queue,
                                          audioFreeBuffers[i]);
                 audioFreeBuffers[i] = nil;
             }
         }
     }
-}
-
-static void startAudioQueue(){
-    NSLog(@"Start Audio Queue");
-    AudioQueueStart(myStream.queue,
-                    NULL);
-}
-
-static void stopAudioQueue(){
-    NSLog(@"Pause Audio Queue");
-    AudioQueuePause(myStream.queue);
 }
 
 @interface ViewController ()
@@ -262,6 +267,12 @@ static void stopAudioQueue(){
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
     [self setupAudioSession];
+    
+    label = [[UILabel alloc] initWithFrame:CGRectMake(0, 100, 320, 100)];
+    label.textAlignment = NSTextAlignmentCenter;
+    label.font = [UIFont systemFontOfSize:20.0];
+    [self.view addSubview:label];
+    
     NSString* availableRadioURLString = @"http://stream.radiojavan.com";
     NSURL* url                        = [NSURL URLWithString:availableRadioURLString];
     NSURLRequest* request             = [NSURLRequest requestWithURL:url
