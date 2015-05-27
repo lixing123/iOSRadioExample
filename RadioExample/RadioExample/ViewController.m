@@ -8,6 +8,7 @@
 
 #import "ViewController.h"
 #import <AudioToolbox/AudioToolbox.h>
+#import <AVFoundation/AVFoundation.h>
 #import "Packet.h"
 
 #define BUFFER_COUNT 20
@@ -26,6 +27,9 @@ MyStreamStruct myStream;
 NSMutableArray* packetQueue;
 int audioTotalBuffers;
 BOOL audioStarted;
+
+AudioQueueBufferRef audioFreeBuffers[BUFFER_COUNT];
+BOOL isBuffering;
 
 static void CheckError(OSStatus error, const char *operation)
 {
@@ -50,6 +54,9 @@ static void handleAudioQueueCallback(AudioQueueRef inAQ, AudioQueueBufferRef buf
     AudioStreamPacketDescription inPacketDescriptions[512];
     UInt32 inNumberPacketeDescriptions = 0;
     
+    //Without this line, the code will encount error
+    buffer->mAudioDataByteSize = 0;
+    
     @synchronized(packetQueue){
         //While buffer not filled, continue
         while (packetQueue.count>0) {
@@ -65,13 +72,14 @@ static void handleAudioQueueCallback(AudioQueueRef inAQ, AudioQueueBufferRef buf
                 buffer->mAudioDataByteSize += [data length];
                 [packetQueue removeObjectAtIndex:0];
             }else{
-                NSLog(@"buffer length:%d",buffer->mAudioDataByteSize);
+                NSLog(@"AudioQueueCallback %d bytes, total %d bytes",(int)[data length],buffer->mAudioDataByteSize);
                 break;
             }
             
         }
         
         if (buffer->mAudioDataByteSize>0) {
+            NSLog(@"enqueuing buffer");
             //Enqueue buffer to AudioQueue
             CheckError(AudioQueueEnqueueBuffer(inAQ,
                                                buffer,
@@ -80,6 +88,13 @@ static void handleAudioQueueCallback(AudioQueueRef inAQ, AudioQueueBufferRef buf
                        "AudioQueueEnqueueBuffer failed");
         }else if (buffer->mAudioDataByteSize==0){
             NSLog(@"Out of buffer");
+            for (int i=0; i<BUFFER_COUNT; i++) {
+                if (!audioFreeBuffers[i]) {
+                    NSLog(@"waiting for data...");
+                    audioFreeBuffers[i] = buffer;
+                }
+            }
+            isBuffering = YES;
         }
     }
 }
@@ -189,6 +204,18 @@ void MyPacketCallback( void *inClientData,
                    "AudioQueueStart failed");
         audioStarted = YES;
     }
+    
+    //Check for free buffers
+    @synchronized(packetQueue){
+        for (int i=0; i<BUFFER_COUNT; i++) {
+            if (audioFreeBuffers[i]) {
+                NSLog(@"fill in free buffers");
+                handleAudioQueueCallback(myStruct->queue,
+                                         audioFreeBuffers[i]);
+                audioFreeBuffers[i] = nil;
+            }
+        }
+    }
 }
 
 @interface ViewController ()
@@ -202,6 +229,7 @@ void MyPacketCallback( void *inClientData,
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
+    [self setupAudioSession];
     NSString* availableRadioURLString = @"http://stream.radiojavan.com";
     NSURL* url                        = [NSURL URLWithString:availableRadioURLString];
     NSURLRequest* request             = [NSURLRequest requestWithURL:url
@@ -221,6 +249,12 @@ void MyPacketCallback( void *inClientData,
                         MyPacketCallback,
                         0,
                         &myStream.stream);
+}
+
+-(void)setupAudioSession{
+    AVAudioSession* session = [AVAudioSession sharedInstance];
+    [session setCategory:AVAudioSessionCategoryPlayAndRecord error:nil];
+    [session setActive:YES error:nil];
 }
 
 - (void)didReceiveMemoryWarning {
