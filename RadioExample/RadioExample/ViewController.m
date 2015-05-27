@@ -75,8 +75,9 @@ static void handleAudioQueueCallback(AudioQueueRef inAQ, AudioQueueBufferRef buf
                 NSLog(@"AudioQueueCallback %d bytes, total %d bytes",(int)[data length],buffer->mAudioDataByteSize);
                 break;
             }
-            
         }
+        
+        //TODO:When packetQueue count is less, pause the queue and wait for enough data.
         
         if (buffer->mAudioDataByteSize>0) {
             NSLog(@"enqueuing buffer");
@@ -87,7 +88,7 @@ static void handleAudioQueueCallback(AudioQueueRef inAQ, AudioQueueBufferRef buf
                                                inPacketDescriptions),
                        "AudioQueueEnqueueBuffer failed");
         }else if (buffer->mAudioDataByteSize==0){
-            NSLog(@"Out of buffer");
+            NSLog(@"packetQueue count:%d",(int)packetQueue.count);
             for (int i=0; i<BUFFER_COUNT; i++) {
                 if (!audioFreeBuffers[i]) {
                     NSLog(@"waiting for data...");
