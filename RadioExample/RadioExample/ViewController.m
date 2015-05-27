@@ -72,15 +72,12 @@ static void handleAudioQueueCallback(AudioQueueRef inAQ, AudioQueueBufferRef buf
                 buffer->mAudioDataByteSize += [data length];
                 [packetQueue removeObjectAtIndex:0];
             }else{
-                NSLog(@"AudioQueueCallback %d bytes, total %d bytes",(int)[data length],buffer->mAudioDataByteSize);
+                //NSLog(@"AudioQueueCallback %d bytes, total %d bytes",(int)[data length],buffer->mAudioDataByteSize);
                 break;
             }
         }
         
-        //TODO:When packetQueue count is less, pause the queue and wait for enough data.
-        
         if (buffer->mAudioDataByteSize>0) {
-            NSLog(@"enqueuing buffer");
             //Enqueue buffer to AudioQueue
             CheckError(AudioQueueEnqueueBuffer(inAQ,
                                                buffer,
@@ -88,10 +85,9 @@ static void handleAudioQueueCallback(AudioQueueRef inAQ, AudioQueueBufferRef buf
                                                inPacketDescriptions),
                        "AudioQueueEnqueueBuffer failed");
         }else if (buffer->mAudioDataByteSize==0){
-            NSLog(@"packetQueue count:%d",(int)packetQueue.count);
             for (int i=0; i<BUFFER_COUNT; i++) {
                 if (!audioFreeBuffers[i]) {
-                    NSLog(@"waiting for data...");
+                    //NSLog(@"waiting for data...");
                     audioFreeBuffers[i] = buffer;
                 }
             }
@@ -101,7 +97,7 @@ static void handleAudioQueueCallback(AudioQueueRef inAQ, AudioQueueBufferRef buf
 }
 
 static void myQueueOutputCallback ( void *inUserData, AudioQueueRef inAQ, AudioQueueBufferRef inBuffer ){
-    NSLog(@"%s",__func__);
+    //NSLog(@"%s",__func__);
     handleAudioQueueCallback(inAQ,
                              inBuffer);
 }
@@ -190,9 +186,10 @@ void MyPacketCallback( void *inClientData,
         audioTotalBuffers += aspd.mDataByteSize;
     }
     
-    //If audio queue not started and total buffers is enough,
+    //If audio queue not started and total buffers is "large enough",
     //fill the AudioQueueBuffers and start the audio queue
-    if (!audioStarted && audioTotalBuffers>BUFFER_COUNT*BUFFER_SIZE) {
+    //We don't start the queue until the total buffer count is large enough in order to avoid most of the suffering of audio data leverage.
+    if (!audioStarted && audioTotalBuffers>BUFFER_COUNT*BUFFER_SIZE*3) {
         for (int i=0; i<BUFFER_COUNT; i++) {
             AudioQueueBufferRef buffer = myStruct->buffers[i];
             handleAudioQueueCallback(myStruct->queue,
@@ -206,17 +203,51 @@ void MyPacketCallback( void *inClientData,
         audioStarted = YES;
     }
     
+    //TODO:
+    //When packetQueue count is small, pause the queue and wait for enough data.
+    //NSLog(@"packet count:%d",(int)packetQueue.count);
+    if (audioStarted) {
+        UInt32 isRunning;
+        UInt32 size = sizeof(isRunning);
+        CheckError(AudioQueueGetProperty(myStream.queue,
+                                         kAudioQueueProperty_IsRunning,
+                                         &isRunning,
+                                         &size),
+                   "AudioQueueGetProperty kAudioQueueProperty_IsRunning");
+        NSLog(@"isRunning:%d",isRunning);
+        if (packetQueue.count<500) {
+            if (isRunning) {
+                
+            }
+        }else{
+            if (!isRunning) {
+                
+            }
+        }
+    }
+    
     //Check for free buffers
     @synchronized(packetQueue){
         for (int i=0; i<BUFFER_COUNT; i++) {
             if (audioFreeBuffers[i]) {
-                NSLog(@"fill in free buffers");
+                //NSLog(@"fill in free buffers");
                 handleAudioQueueCallback(myStruct->queue,
                                          audioFreeBuffers[i]);
                 audioFreeBuffers[i] = nil;
             }
         }
     }
+}
+
+static void startAudioQueue(){
+    NSLog(@"Start Audio Queue");
+    AudioQueueStart(myStream.queue,
+                    NULL);
+}
+
+static void stopAudioQueue(){
+    NSLog(@"Pause Audio Queue");
+    AudioQueuePause(myStream.queue);
 }
 
 @interface ViewController ()
